@@ -286,7 +286,7 @@ var CalHeatMap = function() {
 		"min": {
 			name: "minute",
 			level: 10,
-			maxItemNumber: 1,
+			maxItemNumber: 60,
 			defaultRowNumber: 10,
 			defaultColumnNumber: 6,
 			row: function(d) { return self.getSubDomainRowNumber(d); },
@@ -310,18 +310,18 @@ var CalHeatMap = function() {
 			maxItemNumber: function(d) {
 				switch(self.options.domain) {
 				case "day":
-					return 24;
+					return 14;
 				case "week":
 					return 24 * 7;
 				case "month":
 					return 24 * (self.options.domainDynamicDimension ? self.getDayCountInMonth(d): 31);
 				}
 			},
-			defaultRowNumber: 6,
+			defaultRowNumber: 1,
 			defaultColumnNumber: function(d) {
 				switch(self.options.domain) {
 				case "day":
-					return 4;
+					return 1;
 				case "week":
 					return 28;
 				case "month":
@@ -386,21 +386,31 @@ var CalHeatMap = function() {
 				d = new Date(d);
 				switch(self.options.domain) {
 				case "week":
-					return 1;
+					return 14;
 				case "month":
 					return (self.options.domainDynamicDimension && !self.options.verticalOrientation) ? (self.getWeekNumber(new Date(d.getFullYear(), d.getMonth()+1, 0)) - self.getWeekNumber(d) + 1): 6;
 				case "year":
 					return (self.options.domainDynamicDimension ? (self.getWeekNumber(new Date(d.getFullYear(), 11, 31)) - self.getWeekNumber(new Date(d.getFullYear(), 0)) + 1): 54);
 				}
 			},
-			defaultRowNumber: 7,
+			defaultRowNumber: 1,
 			row: function(d) { return self.getSubDomainRowNumber(d); },
 			column: function(d) { return self.getSubDomainColumnNumber(d); },
 			position: {
 				x: function(d) {
 					switch(self.options.domain) {
 					case "week":
-						return Math.floor(self.getWeekDay(d) / self._domainType.day.row(d));
+						// console.log(self.getWeekDay(d))
+						self.subDomainPerDomain += 1;
+						if (self.subDomainPerDomain > 7) {
+							if (self.subDomainPerDomain >= 14){
+								self.subDomainPerDomain = 0;
+							}
+							return Math.floor((self.getWeekDay(d) + 7) / self._domainType.day.row(d));
+						}
+						else {
+							return Math.floor(self.getWeekDay(d) / self._domainType.day.row(d));
+						}
 					case "month":
 						if (self.options.colLimit > 0 || self.options.rowLimit > 0) {
 							return Math.floor((d.getDate() - 1)/ self._domainType.day.row(d));
@@ -589,6 +599,10 @@ var CalHeatMap = function() {
 	// List of domains that are skipped because of DST
 	// All times belonging to these domains should be re-assigned to the previous domain
 	this.DSTDomain = [];
+	
+	this.subDomainPerDomain = 0;
+	
+	this.updateYPosCounter = 0;
 
 	/**
 	 * Display the graph for the first time
@@ -780,14 +794,18 @@ var CalHeatMap = function() {
 		;
 
 		self.lastInsertedSvg = svg;
+		
 
 		function getDomainPosition(domainIndex, graphDim, axis, domainDim) {
 			var tmp = 0;
 			switch(navigationDir) {
 			case false:
 				tmp = graphDim[axis];
-
-				graphDim[axis] += domainDim;
+				console.log(self.updateYPosCounter)
+				self.updateYPosCounter += 1;
+				if (self.updateYPosCounter % 2 == 0){
+					graphDim[axis] += domainDim;
+				}
 				self.domainPosition.setPosition(domainIndex, tmp);
 				return tmp;
 
@@ -2248,7 +2266,7 @@ CalHeatMap.prototype = {
 
 		var stop = range;
 		if (typeof range !== "object") {
-			stop = new Date(endDate.setDate(endDate.getDate() + range * 7));
+			stop = new Date(endDate.setDate(endDate.getDate() + range * 14));
 		}
 
 		return (this.options.weekStartOnMonday === true) ?
@@ -2387,7 +2405,7 @@ CalHeatMap.prototype = {
 		var computeHourSubDomainSize = function(date, domain) {
 			switch(domain) {
 			case "day":
-				return 24;
+				return 1;
 			case "week":
 				return 168;
 			case "month":
